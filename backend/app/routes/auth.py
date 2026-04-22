@@ -36,6 +36,7 @@ class RefreshRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
+    username: str
     token_type: str = "bearer"
 
 
@@ -78,6 +79,7 @@ async def login(request: Request, credentials: UserCredentials):
     return TokenResponse(
         access_token=create_access_token(username),
         refresh_token=create_refresh_token(username),
+        username=username,
     )
 
 
@@ -104,6 +106,7 @@ async def refresh(request: Request, body: RefreshRequest):
     return TokenResponse(
         access_token=create_access_token(username),
         refresh_token=create_refresh_token(username),  # rotate
+        username=username,
     )
 
 

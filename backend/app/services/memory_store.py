@@ -155,7 +155,6 @@ async def store_memories_batch(
     
     logger.info(f"Batch stored {len(items)} memories for user {user_id}")
     return mem_ids
-    return memory_id
 
 
 # ── Read / Search ─────────────────────────────────────────────────────────────
@@ -217,7 +216,7 @@ async def update_memory_lifecycle(memory_id: str, user_id: str, new_lifecycle: s
     col = _memories_collection()
     await col.update_one(
         {"_id": memory_id},
-        {"$set": {"lifecycle": new_lifecycle, "updated_at": datetime.utcnow()}}
+        {"$set": {"metadata.lifecycle": new_lifecycle, "updated_at": datetime.utcnow()}}
     )
 
     collection = _get_collection(user_id)
@@ -248,14 +247,50 @@ async def get_memory_stats(user_id: str) -> Dict[str, Any]:
     pipeline = [
         {"$match": {"user_id": user_id}},
         {"$group": {
-            "_id": "$lifecycle",
+            "_id": "$metadata.lifecycle",
             "count": {"$sum": 1},
             "avg_importance": {"$avg": "$metadata.importance"},
         }}
     ]
-    stats: Dict[str, Any] = {"short_term": 0, "long_term": 0, "archived": 0}
+    stats: Dict[str, Any] = {
+        "total": 0,
+        "by_lifecycle": {"short_term": 0, "long_term": 0, "archived": 0},
+        "avg_importance": 0.0,
+        "by_intent": {},
+        "by_speaker": {},
+        "recent_count": 0
+    }
+    
+    # Get total count
+    stats["total"] = await col.count_documents({"user_id": user_id})
+    
+    # Get lifecycle stats
     async for doc in col.aggregate(pipeline):
-        stats[doc["_id"]] = doc["count"]
+        lifecycle = doc["_id"] or "short_term"
+        stats["by_lifecycle"][lifecycle] = doc["count"]
+        # Update avg importance if it's the main stat
+        if stats["avg_importance"] == 0.0:
+             stats["avg_importance"] = doc.get("avg_importance", 0.0)
+    
+    # Get intent and speaker stats
+    pipeline_extras = [
+        {"$match": {"user_id": user_id}},
+        {"$facet": {
+            "by_intent": [{"$group": {"_id": "$metadata.intent", "count": {"$sum": 1}}}],
+            "by_speaker": [{"$group": {"_id": "$metadata.speaker", "count": {"$sum": 1}}}],
+            "recent": [{"$match": {"created_at": {"$gte": datetime.utcnow() - timedelta(days=1)}}}, {"$count": "count"}]
+        }}
+    ]
+    
+    from datetime import timedelta
+    async for doc in col.aggregate(pipeline_extras):
+        for item in doc.get("by_intent", []):
+            if item["_id"]: stats["by_intent"][item["_id"]] = item["count"]
+        for item in doc.get("by_speaker", []):
+            if item["_id"]: stats["by_speaker"][item["_id"]] = item["count"]
+        if doc.get("recent"):
+            stats["recent_count"] = doc["recent"][0]["count"]
+
     return stats
 
 

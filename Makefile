@@ -7,7 +7,7 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
 dev: ## Start backend with hot reload
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8002
+	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test: ## Run pytest with coverage report
 	cd backend && pytest --cov=app --cov-report=term-missing --cov-report=html

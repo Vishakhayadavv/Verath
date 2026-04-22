@@ -119,7 +119,35 @@ class MemoryGraph:
     def get_related_memories(self, memory_id: str, max_results: int = 5) -> List[dict]:
         """Get memories related to a specific memory."""
         if not self._nx_available:
-            return []
+            if memory_id not in self.graph:
+                return []
+            
+            # Simple fallback: return memories sharing same concepts
+            node_data = self.graph[memory_id]
+            related = []
+            seen_ids = {memory_id}
+            
+            # This is slow but works as fallback
+            for mid, other_data in self.graph.items():
+                if mid in seen_ids: continue
+                # Basic overlap check
+                shared = 0
+                # (Actual concept check would need stored concepts in node_data)
+                if other_data.get('speaker') == node_data.get('speaker'):
+                    shared += 0.5
+                
+                if shared > 0:
+                    related.append({
+                        'id': mid,
+                        'text': other_data.get('text', ''),
+                        'speaker': other_data.get('speaker', 'unknown'),
+                        'timestamp': other_data.get('timestamp', 0),
+                        'importance': other_data.get('importance', 0.5),
+                        'relation_strength': shared
+                    })
+            
+            related.sort(key=lambda x: x['relation_strength'], reverse=True)
+            return related[:max_results]
         
         if memory_id not in self.graph:
             return []

@@ -57,7 +57,7 @@ async def upload_record(
             shutil.copyfileobj(file.file, buffer)
             
         # Process the saved file, timestamp
-        memory = await process_audio(str(file_path), user_id)
+        memory = await process_audio(str(file_path), user_id, timestamp=timestamp)
         
         return {
             "success": memory is not None,

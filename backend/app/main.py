@@ -222,12 +222,13 @@ async def status():
 
     # Check Ollama
     try:
-        import requests
-        response = requests.get(f"{settings.ollama_url}/api/tags", timeout=2)
-        if response.status_code == 200:
-            health_status["services"]["ollama"] = "healthy"
-        else:
-            health_status["services"]["ollama"] = "unhealthy"
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{settings.ollama_url}/api/tags", timeout=2.0)
+            if response.status_code == 200:
+                health_status["services"]["ollama"] = "healthy"
+            else:
+                health_status["services"]["ollama"] = "unhealthy"
     except Exception as e:
         health_status["services"]["ollama"] = f"unhealthy: {str(e)}"
 

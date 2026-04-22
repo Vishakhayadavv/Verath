@@ -19,7 +19,7 @@ async def get_today_timeline(user_id: str) -> List[Dict]:
                 recent_memories.append(mem)
         
         # Sort by created_at (timestamp) descending
-        recent_memories.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        recent_memories.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
         
         return [
             {
@@ -177,4 +177,3 @@ def _get_audio_url(audio_file: str) -> str:
     # Use the configured host and port
     base_url = f"http://{settings.host}:{settings.port}"
     return f"{base_url}/{audio_file}"
-    return "Unknown"

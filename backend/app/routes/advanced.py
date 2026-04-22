@@ -70,9 +70,8 @@ async def insights(user_id: str = Depends(get_current_user_id)):
         logger.error(f"Error extracting insights: {e}", exc_info=True)
         return {"insights": []}
 
-@cached(ttl_seconds=300, key_prefix="stats")  # 5 minutes cache
-
 @router.get("/statistics")
+@cached(ttl_seconds=300, key_prefix="stats")  # 5 minutes cache
 async def statistics(user_id: str = Depends(get_current_user_id)):
     """Get memory statistics."""
     try:
@@ -108,11 +107,11 @@ async def export_memories(
         
         if start_date:
             start_dt = datetime.fromisoformat(start_date)
-            memories = [m for m in memories if datetime.fromisoformat(m.get("created_at", "")) >= start_dt]
+            memories = [m for m in memories if (m.get("created_at") if isinstance(m.get("created_at"), datetime) else datetime.fromisoformat(m.get("created_at", ""))) >= start_dt]
         
         if end_date:
             end_dt = datetime.fromisoformat(end_date)
-            memories = [m for m in memories if datetime.fromisoformat(m.get("created_at", "")) <= end_dt]
+            memories = [m for m in memories if (m.get("created_at") if isinstance(m.get("created_at"), datetime) else datetime.fromisoformat(m.get("created_at", ""))) <= end_dt]
         
         if format == "csv":
             # Generate CSV
