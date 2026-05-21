@@ -987,7 +987,7 @@ MONGO_URI=mongodb+srv://your-username:your-password@cluster0.d7dlkdt.mongodb.net
 DATABASE_NAME=verath
 
 # Security
-SECRET_KEY=generate-a-long-random-secret-key-herettings
+SECRET_KEY=   # Required: generate with: python -c "import secrets; print(secrets.token_hex(32))"
 
 # Audio Settings
 AUDIO_SAMPLE_RATE=16000

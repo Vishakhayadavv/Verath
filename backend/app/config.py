@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # ── Security ───────────────────────────────────────────────────────────────────
     secret_key: str = Field(
-        default="default-secret-key-change-in-production-min-32-chars",
+        default="",
         description="Secret key for JWT tokens"
     )
 
@@ -40,9 +40,9 @@ class Settings(BaseSettings):
         secrets_path = Path("/run/secrets/secret_key")
         if secrets_path.exists():
             v = secrets_path.read_text().strip()
-        elif len(v) < 32:
+        elif not v or len(v) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
-        if v in ("your-super-secret-key", "changeme", "secret"):
+        if v in ("your-super-secret-key", "changeme", "secret", "generate-a-long-random-secret-key-herettings"):
             raise ValueError("SECRET_KEY is set to a known insecure default — please change it.")
         return v
 
