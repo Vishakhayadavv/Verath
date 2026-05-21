@@ -95,11 +95,11 @@ async def store_memories_batch(
 ) -> List[str]:
     """
     Store multiple memories in batch using batch embedding generation.
-    
+
     Args:
         user_id: User ID
         items: List of dicts with 'text' and 'metadata' keys
-        
+
     Returns:
         List of memory IDs (same order as input)
     """

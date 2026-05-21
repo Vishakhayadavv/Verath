@@ -16,7 +16,7 @@ class AudioProcessor:
     async def record_session(self, session: RecordingSession, user_id: str) -> Dict[str, Any]:
         """
         Record audio with session metadata.
-        
+
         Session types:
         - manual: User-initiated recording
         - lecture: Long-form lecture recording

@@ -58,7 +58,7 @@ _cache = SimpleCache()
 def cached(ttl_seconds: int = 300, key_prefix: str = ""):
     """
     Decorator to cache function results with TTL.
-    
+
     Args:
         ttl_seconds: Time to live in seconds (default 5 minutes)
         key_prefix: Prefix for cache key
