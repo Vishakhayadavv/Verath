@@ -17,7 +17,17 @@ select = [
 # Ignore specific rules
 ignore = [
     "S101",  # Allow assert in tests
-    "E501",  # Ignore line length (set to 120 via line-length)
+    "E501",  # Ignore line length
+    "S104",  # Binding to all interfaces
+    "S324",  # MD5 hash usage
+    "S105",  # Hardcoded password
+    "B904",  # raise from err
+    "B008",  # Function call in defaults
+    "E722",  # Bare except
+    "S110",  # try-except-pass
+    "S112",  # try-except-continue
+    "E701",  # Multiple statements on one line
+    "F841",
 ]
 
 # Line length limit

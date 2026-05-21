@@ -1,5 +1,7 @@
-from typing import List, Dict
+from typing import Dict, List
+
 import torch
+
 from app.core.logging_config import logger
 
 try:
@@ -44,7 +46,7 @@ def identify_speakers(audio_file: str) -> List[Dict]:
                 speaker_name = f"Speaker {speaker_id}"
             else:
                 speaker_name = speaker
-            
+
             speakers.append({"speaker": speaker_name, "start": turn.start, "end": turn.end})
         return speakers or [{"speaker": "You", "start": 0.0, "end": 10.0}]
     except Exception as e:
@@ -55,14 +57,14 @@ def get_primary_speaker(speakers: List[Dict]) -> str:
     """Get the speaker who spoke the most."""
     if not speakers:
         return "You"
-    
+
     # Calculate total speaking time for each speaker
     speaker_times = {}
     for spk in speakers:
         speaker = spk["speaker"]
         duration = spk["end"] - spk["start"]
         speaker_times[speaker] = speaker_times.get(speaker, 0) + duration
-    
+
     # Return speaker with most speaking time
     if speaker_times:
         return max(speaker_times.items(), key=lambda x: x[1])[0]

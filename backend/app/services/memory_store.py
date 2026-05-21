@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -51,7 +51,7 @@ async def store_memory(
     """
     mem_id = str(uuid.uuid4())
     timestamp = created_at if created_at else datetime.utcnow()
-    
+
     # Sanitize metadata for ChromaDB (no nested dicts, no MongoDB-specific types)
     sanitized_metadata = {
         "user_id": user_id,
@@ -61,10 +61,10 @@ async def store_memory(
         "lifecycle": metadata.get("lifecycle", "short_term"),
         "timestamp": timestamp.isoformat(),
     }
-    
+
     # Generate embedding
     embedding = get_embedding(text)
-    
+
     # Store in MongoDB
     doc = {
         "_id": mem_id,
@@ -76,7 +76,7 @@ async def store_memory(
         "updated_at": timestamp,
     }
     await _memories_collection().insert_one(doc)
-    
+
     # Store in ChromaDB
     collection = _get_collection(user_id)
     collection.upsert(
@@ -85,7 +85,7 @@ async def store_memory(
         documents=[text],
         metadatas=[sanitized_metadata]
     )
-    
+
     return mem_id
 
 
@@ -105,18 +105,18 @@ async def store_memories_batch(
     """
     if not items:
         return []
-    
+
     # Single item - use regular store
     if len(items) == 1:
         return [await store_memory(user_id, items[0]["text"], items[0]["metadata"])]
-    
+
     timestamp = datetime.utcnow()
     mem_ids = [str(uuid.uuid4()) for _ in items]
     texts = [item["text"] for item in items]
-    
+
     # Batch generate embeddings
     embeddings = await get_embeddings_batch(texts)
-    
+
     # Prepare MongoDB documents
     docs = []
     chroma_metadatas = []
@@ -140,10 +140,10 @@ async def store_memories_batch(
             "updated_at": timestamp,
         })
         chroma_metadatas.append(sanitized_metadata)
-    
+
     # Batch insert to MongoDB
     await _memories_collection().insert_many(docs)
-    
+
     # Batch upsert to ChromaDB
     collection = _get_collection(user_id)
     collection.upsert(
@@ -152,7 +152,7 @@ async def store_memories_batch(
         documents=texts,
         metadatas=chroma_metadatas
     )
-    
+
     logger.info(f"Batch stored {len(items)} memories for user {user_id}")
     return mem_ids
 
@@ -260,10 +260,10 @@ async def get_memory_stats(user_id: str) -> Dict[str, Any]:
         "by_speaker": {},
         "recent_count": 0
     }
-    
+
     # Get total count
     stats["total"] = await col.count_documents({"user_id": user_id})
-    
+
     # Get lifecycle stats
     async for doc in col.aggregate(pipeline):
         lifecycle = doc["_id"] or "short_term"
@@ -271,7 +271,7 @@ async def get_memory_stats(user_id: str) -> Dict[str, Any]:
         # Update avg importance if it's the main stat
         if stats["avg_importance"] == 0.0:
              stats["avg_importance"] = doc.get("avg_importance", 0.0)
-    
+
     # Get intent and speaker stats
     pipeline_extras = [
         {"$match": {"user_id": user_id}},
@@ -281,8 +281,8 @@ async def get_memory_stats(user_id: str) -> Dict[str, Any]:
             "recent": [{"$match": {"created_at": {"$gte": datetime.utcnow() - timedelta(days=1)}}}, {"$count": "count"}]
         }}
     ]
-    
-    
+
+
     async for doc in col.aggregate(pipeline_extras):
         for item in doc.get("by_intent", []):
             if item["_id"]: stats["by_intent"][item["_id"]] = item["count"]

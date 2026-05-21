@@ -1,24 +1,25 @@
-import logging
-from typing import List
 from datetime import datetime
-from app.services.groq_service import generate_response
-from app.services.timeline import get_today_timeline, get_recent_timeline
+from typing import List
+
 from app.core.logging_config import logger
+from app.services.groq_service import generate_response
+from app.services.timeline import get_recent_timeline, get_today_timeline
+
 
 async def generate_daily_summary(user_id: str) -> str:
     """Generate a summary of today's activities."""
     try:
         timeline = await get_today_timeline(user_id)
-        
+
         if not timeline:
             return "No memories recorded today."
-        
+
         # Extract text for LLM
         text_content = "\n".join([
             f"[{item['time']} - {item['speaker']}]: {item['text']}"
             for item in timeline
         ])
-        
+
         prompt = f"""
 Summarize this day's activities and conversations:
 
@@ -33,7 +34,7 @@ Include:
 
 Provide a concise, insightful summary (2-3 paragraphs):
 """
-        
+
         return await generate_response(prompt)
     except Exception as e:
         logger.error(f"Error generating daily summary: {e}", exc_info=True)
@@ -43,16 +44,16 @@ async def generate_period_summary(user_id: str, hours: int = 24) -> str:
     """Generate summary for the last N hours."""
     try:
         timeline = await get_recent_timeline(user_id, hours)
-        
+
         if not timeline:
             return f"No memories recorded in the last {hours} hours."
-        
+
         # Extract text for LLM
         text_content = "\n".join([
             f"[{item['time']} - {item['speaker']}]: {item['text']}"
             for item in timeline
         ])
-        
+
         prompt = f"""
 Summarize the activities and conversations from the last {hours} hours:
 
@@ -66,7 +67,7 @@ Focus on:
 
 Provide a clear, actionable summary (2-3 paragraphs):
 """
-        
+
         return await generate_response(prompt)
     except Exception as e:
         logger.error(f"Error generating period summary: {e}", exc_info=True)
@@ -76,24 +77,24 @@ async def extract_key_insights(user_id: str) -> List[str]:
     """Extract key insights from recent memories."""
     try:
         recent_memories = await get_recent_timeline(user_id, 48)  # Last 2 days
-        
+
         if not recent_memories:
             return []
-        
+
         # Filter for high-importance memories
         important_memories = [
-            mem for mem in recent_memories 
+            mem for mem in recent_memories
             if mem.get('importance', 0) >= 0.6
         ]
-        
+
         if not important_memories:
             return []
-        
+
         text_content = "\n".join([
             f"[{mem['speaker']}]: {mem['text']}"
             for mem in important_memories
         ])
-        
+
         prompt = f"""
 Extract the 3-5 most important insights from these conversations:
 
@@ -107,19 +108,19 @@ Focus on:
 
 Return as a bulleted list, one insight per line:
 """
-        
+
         response = await generate_response(prompt)
-        
+
         # Split into lines and clean up
         lines = [line.strip().lstrip('-').lstrip('*').strip() for line in response.split('\n') if line.strip()]
-        
+
         insights = []
         now = datetime.utcnow()
         for i, line in enumerate(lines[:5]):
             # Try to find a source memory for timestamp, else use now
             source_mem = important_memories[i] if i < len(important_memories) else (important_memories[0] if important_memories else None)
             ts = source_mem.get('timestamp') if source_mem else now
-            
+
             # Convert ts to unix timestamp if it's a datetime object or iso string
             unix_ts = now.timestamp()
             if isinstance(ts, datetime):
@@ -137,7 +138,7 @@ Return as a bulleted list, one insight per line:
                 "intent": "insight",
                 "timestamp": unix_ts
             })
-            
+
         return insights
     except Exception as e:
         logger.error(f"Error extracting insights: {e}", exc_info=True)

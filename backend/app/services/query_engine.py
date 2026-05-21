@@ -1,10 +1,9 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
+from app.services.groq_service import generate_response
 from app.services.memory_store import search_memories
 from app.services.reranker import rerank
-from app.services.groq_service import generate_response
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 

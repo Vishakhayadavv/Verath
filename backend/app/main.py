@@ -6,25 +6,26 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
-from app.core.logging_config import setup_logging
-from app.workers.background_worker import start_worker
-from app.services.reminder_service import check_and_fire_reminders
-from app.services.database import get_db
-
 # ── Routers ───────────────────────────────────────────────────────────────────
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from app.routes.auth import router as auth_router, limiter
+
+from app.config import settings
+from app.core.logging_config import setup_logging
+from app.routes.advanced import router as advanced_router
+from app.routes.auth import limiter
+from app.routes.auth import router as auth_router
+from app.routes.memories import router as memories_router
+from app.routes.pipeline_routes import router as pipeline_router
+from app.routes.privacy import router as privacy_router
 from app.routes.query import router as query_router
 from app.routes.record import router as record_router
-from app.routes.advanced import router as advanced_router
-from app.routes.speaker import router as speaker_router
-from app.routes.privacy import router as privacy_router
-from app.routes.pipeline_routes import router as pipeline_router
 from app.routes.reminders import router as reminders_router
-from app.routes.memories import router as memories_router
+from app.routes.speaker import router as speaker_router
 from app.routes.websocket import router as websocket_router
+from app.services.database import get_db
+from app.services.reminder_service import check_and_fire_reminders
+from app.workers.background_worker import start_worker
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -38,26 +39,27 @@ async def warm_chroma_collections():
     Rebuild missing collections from MongoDB documents.
     """
     logger.info("Warming ChromaDB collections...")
-    
+
     try:
         db = get_db()
-        
+
         # Get all unique user_ids from memories
         user_ids = await db["memories"].distinct("user_id")
-        
+
         import chromadb
         from chromadb.config import Settings as ChromaSettings
+
         from app.config import settings
         from app.services.gemini_embedding import get_embedding
-        
+
         chroma_client = chromadb.PersistentClient(
             path=settings.vector_db_path,
             settings=ChromaSettings(anonymized_telemetry=False)
         )
-        
+
         for user_id in user_ids:
             collection_name = f"user_{user_id.replace('-', '_')}"
-            
+
             try:
                 # Check if collection exists
                 collection = chroma_client.get_collection(name=collection_name)
@@ -65,25 +67,25 @@ async def warm_chroma_collections():
             except Exception:
                 # Collection doesn't exist - rebuild from MongoDB
                 logger.warning(f"Collection {collection_name} missing for user {user_id}, rebuilding from MongoDB...")
-                
+
                 # Get all memories for this user
                 memories = []
                 async for doc in db["memories"].find({"user_id": user_id}):
                     memories.append(doc)
-                
+
                 if memories:
                     # Create collection
                     collection = chroma_client.create_collection(
                         name=collection_name,
                         metadata={"hnsw:space": "cosine"}
                     )
-                    
+
                     # Rebuild embeddings and upsert
                     ids = [str(doc["_id"]) for doc in memories]
                     texts = [doc["text"] for doc in memories]
                     metadatas = []
                     embeddings = []
-                    
+
                     for doc in memories:
                         metadata = doc.get("metadata", {})
                         sanitized_metadata = {
@@ -95,24 +97,24 @@ async def warm_chroma_collections():
                             "timestamp": doc.get("created_at", datetime.utcnow()).isoformat(),
                         }
                         metadatas.append(sanitized_metadata)
-                        
+
                         # Use stored embedding or regenerate
                         if "embedding" in doc:
                             embeddings.append(doc["embedding"])
                         else:
                             embeddings.append(get_embedding(doc["text"]))
-                    
+
                     collection.upsert(
                         ids=ids,
                         embeddings=embeddings,
                         documents=texts,
                         metadatas=metadatas
                     )
-                    
+
                     logger.info(f"Rebuilt collection {collection_name} with {len(memories)} memories")
-        
+
         logger.info("ChromaDB collection warming complete")
-        
+
     except Exception as e:
         logger.error(f"Error warming ChromaDB collections: {e}", exc_info=True)
 
@@ -123,7 +125,7 @@ async def lifespan(app: FastAPI):
     logger.info("Verath starting up...")
 
     # 1. Connect to MongoDB and create indexes
-    from app.services.database import connect_to_mongo, close_mongo_connection
+    from app.services.database import close_mongo_connection, connect_to_mongo
     await connect_to_mongo()
 
     # 2. Start background worker queue
@@ -186,9 +188,10 @@ app.include_router(websocket_router)
 @app.get("/status")
 async def status():
     # Comprehensive health check
-    from app.services.memory_store import _memories_collection
-    from app.services.database import get_db
     import chromadb
+
+    from app.services.database import get_db
+    from app.services.memory_store import _memories_collection
 
     health_status = {
         "status": "running",

@@ -1,7 +1,7 @@
+from pathlib import Path
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import os
-from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     groq_model: str = Field(default="llama-3.1-8b-instant", description="Groq model to use")
     gemini_model: str = Field(default="gemini-1.5-flash", description="Gemini model to use")
     llm_timeout: int = Field(default=30, description="LLM request timeout in seconds")
-    
+
     embed_provider: str = Field(default="gemini", description="Embeddings provider")
 
     # ── Whisper ───────────────────────────────────────────────────────────────

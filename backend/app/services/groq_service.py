@@ -1,7 +1,8 @@
-import asyncio
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Optional
+
 from groq import AsyncGroq
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)

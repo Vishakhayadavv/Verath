@@ -1,9 +1,9 @@
-import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.services.query_engine import run_query
-from app.models.schema import QueryResponse
-from app.services.auth import verify_access_token, get_current_user_id
+
 from app.core.logging_config import logger
+from app.models.schema import QueryResponse
+from app.services.auth import get_current_user_id
+from app.services.query_engine import run_query
 
 router = APIRouter()
 
@@ -27,17 +27,17 @@ async def query(
             intent_filter=intent_filter,
             min_importance=min_importance
         )
-        
+
         logger.info(f"Query result sources count: {len(result.get('sources', []))}")
-        
+
         # Add pagination metadata
         total_sources = len(result.get("sources", []))
         total_pages = (total_sources + page_size - 1) // page_size
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
-        
+
         paginated_sources = result.get("sources", [])[start_idx:end_idx]
-        
+
         return {
             **result,
             "sources": paginated_sources,

@@ -1,15 +1,16 @@
-import logging
-from typing import Optional
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Depends
 import os
 import shutil
 from pathlib import Path
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+
+from app.core.exceptions import MemoryStorageError, TranscriptionError
+from app.core.logging_config import logger
 from app.models.schema import RecordRequest
 from app.services.audio import record_audio
-from app.services.pipeline import process_audio
 from app.services.auth import get_current_user_id
-from app.core.exceptions import TranscriptionError, MemoryStorageError
-from app.core.logging_config import logger
+from app.services.pipeline import process_audio
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ async def record(payload: RecordRequest, user_id: str = Depends(get_current_user
         logger.info(f"Recording audio for user {user_id}")
         file_path = record_audio(filename=payload.filename, duration=payload.duration)
         memory = await process_audio(file_path, user_id)
-        
+
         return {
             "success": memory is not None,
             "memory": memory,
@@ -46,19 +47,19 @@ async def upload_record(
     """Process an audio file uploaded from the mobile app."""
     try:
         logger.info(f"Received audio upload from user {user_id}")
-        
+
         # Create a temporary path for the uploaded file
         temp_dir = Path("data/uploads")
         temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         file_path = temp_dir / f"upload_{user_id}_{os.urandom(4).hex()}.wav"
-        
+
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
+
         # Process the saved file, timestamp
         memory = await process_audio(str(file_path), user_id, timestamp=timestamp)
-        
+
         return {
             "success": memory is not None,
             "memory": memory,

@@ -1,14 +1,14 @@
-import logging
-from datetime import datetime, date
-from fastapi import APIRouter, Depends, Query, HTTPException
-from app.services.summarizer import generate_daily_summary, extract_key_insights
-from app.services.timeline import get_today_timeline
-from app.services.memory_store import get_memory_stats, all_memories
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.core.cache import cached, get_cache_stats, invalidate_cache
+from app.core.logging_config import logger
 from app.services.auth import get_current_user_id
 from app.services.memory_graph import build_memory_graph
-from app.core.logging_config import logger
-from app.core.cache import cached, add_cache_header, get_cache_stats, invalidate_cache
-from fastapi import Response
+from app.services.memory_store import all_memories, get_memory_stats
+from app.services.summarizer import extract_key_insights, generate_daily_summary
+from app.services.timeline import get_today_timeline
 
 router = APIRouter()
 
@@ -36,14 +36,14 @@ async def timeline(
     try:
         logger.info(f"Getting timeline for user {user_id}, page {page}, size {page_size}")
         timeline_data = await get_today_timeline(user_id)
-        
+
         # Apply pagination
         total = len(timeline_data)
         total_pages = (total + page_size - 1) // page_size
         start_idx = (page - 1) * page_size
         end_idx = start_idx + page_size
         paginated_timeline = timeline_data[start_idx:end_idx]
-        
+
         return {
             "timeline": paginated_timeline,
             "pagination": {
@@ -97,32 +97,33 @@ async def export_memories(
     """
     try:
         logger.info(f"Exporting memories for user {user_id}, format={format}")
-        
+
         # Get all memories
         memories = await all_memories(user_id, limit=10000)
-        
+
         # Apply filters
         if intent_filter:
             memories = [m for m in memories if m.get("metadata", {}).get("intent") == intent_filter]
-        
+
         if start_date:
             start_dt = datetime.fromisoformat(start_date)
             memories = [m for m in memories if (m.get("created_at") if isinstance(m.get("created_at"), datetime) else datetime.fromisoformat(m.get("created_at", ""))) >= start_dt]
-        
+
         if end_date:
             end_dt = datetime.fromisoformat(end_date)
             memories = [m for m in memories if (m.get("created_at") if isinstance(m.get("created_at"), datetime) else datetime.fromisoformat(m.get("created_at", ""))) <= end_dt]
-        
+
         if format == "csv":
             # Generate CSV
             import csv
             from io import StringIO
+
             from fastapi.responses import StreamingResponse
-            
+
             output = StringIO()
             writer = csv.writer(output)
             writer.writerow(["id", "text", "intent", "importance", "speaker", "timestamp", "summary"])
-            
+
             for m in memories:
                 writer.writerow([
                     m.get("_id", ""),
@@ -133,9 +134,9 @@ async def export_memories(
                     m.get("created_at", ""),
                     m.get("metadata", {}).get("summary", "")
                 ])
-            
+
             output.seek(0)
-            
+
             return StreamingResponse(
                 iter([output.getvalue()]),
                 media_type="text/csv",
@@ -150,7 +151,7 @@ async def export_memories(
                 "count": len(memories),
                 "exported_at": datetime.utcnow().isoformat()
             }
-            
+
     except Exception as e:
         logger.error(f"Error exporting memories: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to export memories")

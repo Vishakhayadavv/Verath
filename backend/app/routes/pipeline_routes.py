@@ -1,20 +1,15 @@
-import logging
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
 
-from app.models.memory import RecordingSession
-from app.pipeline.audio_processor import audio_processor
-from app.pipeline.extraction_pipeline import extraction_pipeline
-from app.pipeline.data_validator import data_validator
-from app.workers.background_worker import background_worker
-from app.services.auth import get_current_user_id
 from app.core.logging_config import logger
-from app.core.validators import (
-    validate_session_type, validate_duration, validate_task_id,
-    validate_limit
-)
+from app.core.validators import validate_duration, validate_limit, validate_session_type, validate_task_id
+from app.models.memory import RecordingSession
+from app.pipeline.data_validator import data_validator
+from app.pipeline.extraction_pipeline import extraction_pipeline
+from app.services.auth import get_current_user_id
+from app.workers.background_worker import background_worker
 
 router = APIRouter()
 
@@ -42,23 +37,23 @@ async def record_session(
         # Validate input
         validate_session_type(request.session_type)
         validate_duration(request.duration)
-        
+
         session = RecordingSession(
             session_type=request.session_type,
             duration=request.duration,
             filename=request.filename
         )
-        
+
         # Enqueue for background processing
         task_id = await background_worker.enqueue_recording(session, user_id)
-        
+
         return {
             "success": True,
             "task_id": task_id,
             "session_type": session.session_type,
             "message": "Recording queued for processing"
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -77,10 +72,10 @@ async def extract_memory(
         # Validate text input
         if not request.text or len(request.text.strip()) < 2:
             raise HTTPException(status_code=400, detail="Text must be at least 2 characters")
-        
+
         if len(request.text) > 10000:
             raise HTTPException(status_code=400, detail="Text exceeds maximum length of 10000 characters")
-        
+
         result = await extraction_pipeline.extract(request.text)
         return result
     except HTTPException:
@@ -101,11 +96,11 @@ async def validate_text(
         # Validate text input
         if not request.text or len(request.text.strip()) < 2:
             raise HTTPException(status_code=400, detail="Text must be at least 2 characters")
-        
+
         # Get recent memories for duplicate check
         from app.services.memory_store import all_memories
         recent_memories = await all_memories(user_id, limit=50)
-        
+
         result = await data_validator.validate_memory(request.text, recent_memories)
         return result
     except HTTPException:
@@ -206,7 +201,7 @@ async def cleanup_completed_tasks(
     try:
         if days < 1 or days > 365:
             raise HTTPException(status_code=400, detail="days must be between 1 and 365")
-        
+
         deleted_count = await background_worker.cleanup_completed(days)
         return {
             "success": True,

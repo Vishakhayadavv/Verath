@@ -1,4 +1,5 @@
-from typing import Optional, Any
+from typing import Optional
+
 from fastapi import HTTPException, status
 
 
@@ -50,9 +51,9 @@ def http_exception_from_error(error: VerathException) -> HTTPException:
         QueryError: status.HTTP_500_INTERNAL_SERVER_ERROR,
         AuthenticationError: status.HTTP_401_UNAUTHORIZED,
     }
-    
+
     status_code = status_code_map.get(type(error), status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     return HTTPException(
         status_code=status_code,
         detail={

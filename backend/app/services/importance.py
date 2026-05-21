@@ -1,5 +1,7 @@
-from app.services.groq_service import generate_response
 import re
+
+from app.services.groq_service import generate_response
+
 
 async def score_importance(text: str) -> float:
     """Score importance of text from 0 to 1 using LLM."""
@@ -17,7 +19,7 @@ Consider:
 
 Return only a number between 0.0 and 1.0.
 """
-    
+
     try:
         response = await generate_response(prompt)
         # Extract numeric value from response

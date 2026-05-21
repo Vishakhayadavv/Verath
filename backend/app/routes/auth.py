@@ -1,18 +1,18 @@
 import logging
-from fastapi import APIRouter, HTTPException, status, Request
-from pydantic import BaseModel
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.services.auth import (
     authenticate_user,
-    create_user,
     create_access_token,
     create_refresh_token,
-    verify_refresh_token,
+    create_user,
     decode_access_token,
+    verify_refresh_token,
 )
 from app.services.database import get_db
 
@@ -46,12 +46,12 @@ class TokenResponse(BaseModel):
 async def signup(request: Request, credentials: UserCredentials):
     username = credentials.username.lower().strip()
     ip_address = request.client.host if request.client else "unknown"
-    
+
     success = await create_user(username, credentials.password)
-    
+
     # Audit log
     await _log_auth_event(username, ip_address, "signup", success)
-    
+
     if not success:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -66,10 +66,10 @@ async def login(request: Request, credentials: UserCredentials):
     username_clean = credentials.username.lower().strip()
     username = await authenticate_user(username_clean, credentials.password)
     ip_address = request.client.host if request.client else "unknown"
-    
+
     # Audit log
     await _log_auth_event(username_clean, ip_address, "login", username is not None)
-    
+
     if not username:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,7 +92,7 @@ async def refresh(request: Request, body: RefreshRequest):
     """
     username = verify_refresh_token(body.refresh_token)
     ip_address = request.client.host if request.client else "unknown"
-    
+
     if not username:
         await _log_auth_event("unknown", ip_address, "refresh", False)
         raise HTTPException(
@@ -100,9 +100,9 @@ async def refresh(request: Request, body: RefreshRequest):
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     await _log_auth_event(username, ip_address, "refresh", True)
-    
+
     return TokenResponse(
         access_token=create_access_token(username),
         refresh_token=create_refresh_token(username),  # rotate
@@ -122,21 +122,21 @@ async def logout(request: Request):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No authorization token provided"
         )
-    
+
     token = auth_header.split(" ")[1]
     payload = decode_access_token(token)
-    
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    
+
     jti = payload.get("jti")
     exp = payload.get("exp")
     username = payload.get("sub")
     ip_address = request.client.host if request.client else "unknown"
-    
+
     if jti and exp:
         # Add to blacklist
         db = get_db()
@@ -146,9 +146,9 @@ async def logout(request: Request):
             "blacklisted_at": datetime.utcnow(),
             "username": username
         })
-    
+
     await _log_auth_event(username, ip_address, "logout", True)
-    
+
     return {"message": "Logged out successfully"}
 
 
@@ -161,13 +161,13 @@ async def _log_auth_event(username: str, ip_address: str, event_type: str, succe
         "success": success,
         "timestamp": datetime.utcnow()
     }
-    
+
     # Log to file
     if success:
         logger.info(f"AUTH: {event_type.upper()} - username={username} ip={ip_address}")
     else:
         logger.warning(f"AUTH FAILED: {event_type.upper()} - username={username} ip={ip_address}")
-    
+
     # Log to MongoDB for audit trail
     try:
         db = get_db()

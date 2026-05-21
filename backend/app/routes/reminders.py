@@ -1,15 +1,15 @@
 import logging
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from app.services.reminder_service import (
-    get_upcoming_reminders,
-    acknowledge_reminder,
-)
 from app.services.auth import verify_access_token
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.services.reminder_service import (
+    acknowledge_reminder,
+    get_upcoming_reminders,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reminders", tags=["reminders"])

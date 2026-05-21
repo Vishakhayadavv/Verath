@@ -1,6 +1,7 @@
 import re
 from typing import Any, Dict
-from fastapi import Request, HTTPException, status
+
+from fastapi import Request
 
 
 def sanitize_string(value: str, max_length: int = 10000) -> str:
@@ -12,17 +13,17 @@ def sanitize_string(value: str, max_length: int = 10000) -> str:
     """
     if not value:
         return ""
-    
+
     # Strip HTML tags
     value = re.sub(r'<[^>]+>', '', value)
-    
+
     # Remove null bytes and control characters except newlines, tabs, carriage returns
     value = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', value)
-    
+
     # Truncate to max length
     if len(value) > max_length:
         value = value[:max_length]
-    
+
     return value.strip()
 
 
@@ -43,7 +44,7 @@ def sanitize_dict(data: Dict[str, Any], max_length: int = 10000) -> Dict[str, An
 
 class SanitizationMiddleware:
     """FastAPI middleware to sanitize all request bodies."""
-    
+
     async def __call__(self, request: Request, call_next):
         # Only sanitize POST, PUT, PATCH requests with JSON bodies
         if request.method in ("POST", "PUT", "PATCH") and "application/json" in request.headers.get("content-type", ""):
@@ -59,6 +60,6 @@ class SanitizationMiddleware:
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     # If body is not valid JSON, leave it as is
                     pass
-        
+
         response = await call_next(request)
         return response

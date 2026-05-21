@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)

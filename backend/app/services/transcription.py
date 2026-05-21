@@ -1,6 +1,8 @@
 import logging
 from functools import lru_cache
+
 from faster_whisper import WhisperModel
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -10,8 +12,8 @@ def get_model() -> WhisperModel:
     try:
         logger.info(f"Loading Whisper model '{settings.whisper_model}' on {settings.whisper_device} ({settings.whisper_compute_type})")
         return WhisperModel(
-            settings.whisper_model, 
-            device=settings.whisper_device, 
+            settings.whisper_model,
+            device=settings.whisper_device,
             compute_type=settings.whisper_compute_type
         )
     except Exception as e:
@@ -30,7 +32,7 @@ def transcribe(audio_path: str) -> str:
         logger.info(f"Whisper found {len(segments)} segments. Language: {info.language} ({info.language_probability:.2f})")
         for i, s in enumerate(segments):
             logger.debug(f"Segment {i}: '{s.text}' (conf: {s.avg_logprob:.2f})")
-        
+
         text = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
         logger.info(f"Final transcribed text: '{text}'")
         return text
